@@ -1,0 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --leva-sizes-rootWidth: 340px;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: url('https://png.pngtree.com/background/20240429/original/pngtree-contemporary-doctor-s-consultation-room-a-3d-rendering-of-a-professional-picture-image_8708610.jpg') center/cover no-repeat;
+}
+
+body.greenScreen {
+  background-color: #00ff00;
+  background-image: none;
+}
