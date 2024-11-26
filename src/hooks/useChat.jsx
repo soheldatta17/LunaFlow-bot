@@ -55,7 +55,7 @@ export const ChatProvider = ({ children, setText, text }) => {
       synth.speak(utterThis);
       return utterThis;
     } else {
-      alert("Retry");
+      //alert("Retry");
       console.error("Voice index 2 is not available.");
       setMessages([]);
       setMessage(null);
