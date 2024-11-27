@@ -87,7 +87,7 @@ export const ChatProvider = ({ children, text, setText, count, setCount, categor
         requestData
       );
 
-      generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Server Down. Please try later message";
+      generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Server Down. Please try again later.";
 
 
       generatedText = generatedText.replace(/\*/g, "");
