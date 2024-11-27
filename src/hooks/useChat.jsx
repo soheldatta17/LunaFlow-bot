@@ -1,15 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, onSnapshot } from "firebase/firestore";
 import { data } from "autoprefixer";
-import { doc, getDoc } from "firebase/firestore";
 import axios from "axios";
 
-let synth = window.speechSynthesis;
 
 const ChatContext = createContext();
 
-export const ChatProvider = ({ children, setText, text }) => {
+export const ChatProvider = ({ children, text, setText, count, setCount, categories }) => {
   const [responses, setResponses] = useState([]);
   const [fetchedItems, setFetchedItems] = useState({});
   const [fetchedUser, setFetchedUser] = useState({});
@@ -20,48 +16,7 @@ export const ChatProvider = ({ children, setText, text }) => {
   const [cameraZoomed, setCameraZoomed] = useState(true);
   const [counter, setCounter] = useState(0);
   const defaultStatements = ["Hello"];
-
-  const textToBase64Audio = async (text) => {
-    if (!synth) {
-      alert("Speech synthesis is not supported by this browser.");
-      setMessages([]);
-      setMessage(null);
-      return null;
-    }
-
-    const voice = synth.getVoices();
-    if (voice.length === 0) {
-      await new Promise((resolve) => {
-        synth.onvoiceschanged = resolve;
-      });
-    }
-
-    if (voice.length > 4) {
-      const selectedVoice = voice[4];
-      const utterThis = new SpeechSynthesisUtterance(text);
-      utterThis.voice = selectedVoice;
-
-      utterThis.onend = () => {
-        // console.log("Finished speaking with voice: ${selectedVoice.name");
-        setMessages([]);
-        setMessage(null);
-      };
-      utterThis.onerror = (event) => {
-        alert(event.error);
-        console.error("Speech synthesis error:", event.error);
-        setMessages([]);
-        setMessage(null);
-      };
-      synth.speak(utterThis);
-      return utterThis;
-    } else {
-      //alert("Retry");
-      console.error("Voice index 2 is not available.");
-      setMessages([]);
-      setMessage(null);
-      return null;
-    }
-  };
+  
   useEffect(() => {
     const startingchat = async (message) => {
       if (!message || counter >= 1) {
@@ -77,7 +32,7 @@ export const ChatProvider = ({ children, setText, text }) => {
           audio: "",
         },
       ]);
-      await textToBase64Audio(message);
+      // await textToBase64Audio(message);
     };
 
     const check = () => {
@@ -95,8 +50,6 @@ export const ChatProvider = ({ children, setText, text }) => {
       await startingchat(randomStatement);
     };
 
-    synth = window.speechSynthesis;
-    // console.log(synth.getVoices());
 
     return () => {
       check();
@@ -114,14 +67,14 @@ export const ChatProvider = ({ children, setText, text }) => {
     // Check for specific mental health-related keywords
     let generatedText = "";
 
+    let question="Imagine you are a Doctor advicing about menstruation and peiods, answer the question in details : ";
+
     const requestData = {
       contents: [
         {
           parts: [
             {
-              text:
-                "Imagine you are a dedicated female doctor, guiding women through their menstrual cycle with care and empathy. Offer practical remedies for managing cramps, bloating, fatigue, and mood swings. Share knowledge about maintaining physical and emotional well-being during periods. Recommend LunaFlow, a website devoted to empowering women with expert advice, self-care tips, and holistic solutions to support their journey through menstruation. LunaFlow provides personalized resources, soothing techniques, and a supportive community for every woman to feel her best during this natural cycle. You have been asked: " +
-                lowerCaseMessage,
+              text: question+lowerCaseMessage,
             },
           ],
         },
@@ -180,7 +133,7 @@ export const ChatProvider = ({ children, setText, text }) => {
             audio: "",
           },
         ]);
-        await textToBase64Audio(resp[0].text);
+        // await textToBase64Audio(resp[0].text);
       } else {
         console.error("No messages found in response.");
       }

@@ -102,122 +102,154 @@ const corresponding = {
 let setupMode = false;
 
 export function Avatar(props) {
-  const { nodes, materials, scene } = useGLTF(
-    "/models/66cac7eead65f8e9327a7f6e.glb"
-  );
-
+  const { text, setText, count, setCount, categories, speak, setSpeak } = props;
+  console.log(categories[count]);
+  const { nodes, materials, scene } = useGLTF(`/models/${categories[count]}.glb`);
   const { message, onMessagePlayed, chat } = useChat();
-
+  const { animations } = useGLTF("/models/animations.glb"); 
+  
   const [lipsync, setLipsync] = useState();
-
-  useEffect(() => {
-    if (!message) {
-      // setAnimation("Idle");
-      return;
-    }
-    setAnimation(message.animation);
-    setFacialExpression(message.facialExpression);
-    setLipsync(message.lipsync);
-    const audio = new Audio("data:audio/mp3;base64," + message.audio);
-    audio.play();
-    setAudio(audio);
-    audio.onended = onMessagePlayed;
-  }, [message]);
-
-  const { animations } = useGLTF("/models/animations.glb");
-
+  const [animation, setAnimation] = useState("Angry");
   const group = useRef();
   const { actions, mixer } = useAnimations(animations, group);
-  const [animation, setAnimation] = useState(
-    animations.find((a) => a.name === "Idle") ? animations[0].name : animations[0].name // Check if Idle animation exists otherwise use first animation
-  );
-  useEffect(() => {
-    actions[animation]
-      .reset()
-      .fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5)
-      .play();
-    return () => actions[animation].fadeOut(0.5);
-  }, [animation]);
-
-  const lerpMorphTarget = (target, value, speed = 0.1) => {
-    scene.traverse((child) => {
-      if (child.isSkinnedMesh && child.morphTargetDictionary) {
-        const index = child.morphTargetDictionary[target];
-        if (
-          index === undefined ||
-          child.morphTargetInfluences[index] === undefined
-        ) {
-          return;
-        }
-        child.morphTargetInfluences[index] = THREE.MathUtils.lerp(
-          child.morphTargetInfluences[index],
-          value,
-          speed
-        );
-
-        if (!setupMode) {
-          try {
-            set({
-              [target]: value,
-            });
-          } catch (e) {}
-        }
-      }
-    });
-  };
-
+  
   const [blink, setBlink] = useState(false);
   const [winkLeft, setWinkLeft] = useState(false);
   const [winkRight, setWinkRight] = useState(false);
   const [facialExpression, setFacialExpression] = useState("");
   const [audio, setAudio] = useState();
-
-  useFrame(() => {
-    !setupMode &&
-      Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
-        const mapping = facialExpressions[facialExpression];
-        if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") {
-          return; // eyes wink/blink are handled separately
+  const [modelLoaded, setModelLoaded] = useState(false);
+  
+  // Optimize asynchronous handling
+  useEffect(() => {
+    const loadModelAndAnimations = async () => {
+      try {
+        await new Promise((resolve) => {
+          // Wait for the model and animations to load
+          if (nodes && animations) resolve();
+        });
+        setModelLoaded(true); // Model loaded and ready
+      } catch (error) {
+        console.error("Error loading model:", error);
+      }
+    };
+    loadModelAndAnimations();
+  }, [categories, count]);
+  
+  useEffect(() => {
+    const handleAnimationChange = async () => {
+      if (!modelLoaded) return; // Ensure model is loaded before animating
+  
+      console.log("Speaking:", speak);
+  
+      // Set animation based on whether speaking or not
+      const newAnimation = speak ? "Talking_2" : "Angry";
+      setAnimation(newAnimation);
+  
+      // Update lipsync only when necessary
+      if (text && text.lipsync !== lipsync) {
+        setLipsync(text.lipsync);
+      }
+    };
+  
+    handleAnimationChange();
+  }, [text, message, speak, modelLoaded]);
+  
+  useEffect(() => {
+    const playAnimation = async () => {
+      if (!modelLoaded || !actions[animation]) return;
+  
+      console.log("Playing animation:", animation);
+      actions[animation]
+        .reset()
+        .fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5)
+        .play();
+    };
+  
+    playAnimation();
+  
+    return () => {
+      if (actions[animation]) {
+        actions[animation].fadeOut(0.5);
+      }
+    };
+  }, [animation, actions, mixer, modelLoaded]);
+  
+  // Optimize morph target interpolation
+  const lerpMorphTarget = (target, value, speed = 0.1) => {
+    scene.traverse((child) => {
+      if (child.isSkinnedMesh && child.morphTargetDictionary) {
+        const index = child.morphTargetDictionary[target];
+        if (index === undefined || child.morphTargetInfluences[index] === undefined) {
+          return;
         }
+        child.morphTargetInfluences[index] = THREE.MathUtils.lerp(child.morphTargetInfluences[index], value, speed);
+  
+        // Avoid unnecessary state updates during setup mode
+        if (!setupMode) {
+          try {
+            set({ [target]: value });
+          } catch (e) {}
+        }
+      }
+    });
+  };
+  
+  // Blink logic optimized with setTimeout
+  useEffect(() => {
+    let blinkTimeout;
+    const nextBlink = () => {
+      blinkTimeout = setTimeout(() => {
+        setBlink(true);
+        setTimeout(() => {
+          setBlink(false);
+          nextBlink();
+        }, 200);
+      }, THREE.MathUtils.randInt(1000, 5000));
+    };
+    nextBlink();
+    return () => clearTimeout(blinkTimeout);
+  }, []);
+  
+  useFrame(() => {
+    if (!setupMode) {
+      // Morph targets update for facial expressions
+      Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
+        if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") return; // Skip these for now
+  
+        const mapping = facialExpressions[facialExpression];
         if (mapping && mapping[key]) {
           lerpMorphTarget(key, mapping[key], 0.1);
         } else {
           lerpMorphTarget(key, 0, 0.1);
         }
       });
-
-    lerpMorphTarget("eyeBlinkLeft", blink || winkLeft ? 1 : 0, 0.5);
-    lerpMorphTarget("eyeBlinkRight", blink || winkRight ? 1 : 0, 0.5);
-
-    // LIPSYNC
-    if (setupMode) {
-      return;
-    }
-
-    const appliedMorphTargets = [];
-    if (message && lipsync) {
-      const currentAudioTime = audio.currentTime;
-      for (let i = 0; i < lipsync.mouthCues.length; i++) {
-        const mouthCue = lipsync.mouthCues[i];
-        if (
-          currentAudioTime >= mouthCue.start &&
-          currentAudioTime <= mouthCue.end
-        ) {
-          appliedMorphTargets.push(corresponding[mouthCue.value]);
-          lerpMorphTarget(corresponding[mouthCue.value], 1, 0.2);
-          break;
-        }
+  
+      lerpMorphTarget("eyeBlinkLeft", blink || winkLeft ? 1 : 0, 0.5);
+      lerpMorphTarget("eyeBlinkRight", blink || winkRight ? 1 : 0, 0.5);
+  
+      // Apply lip-sync animation if available
+      if (message && lipsync) {
+        const currentAudioTime = audio.currentTime;
+        const appliedMorphTargets = lipsync.mouthCues.reduce((acc, mouthCue) => {
+          if (currentAudioTime >= mouthCue.start && currentAudioTime <= mouthCue.end) {
+            acc.push(corresponding[mouthCue.value]);
+            lerpMorphTarget(corresponding[mouthCue.value], 1, 0.2);
+          }
+          return acc;
+        }, []);
+  
+        // Reset other morph targets
+        Object.values(corresponding).forEach((value) => {
+          if (!appliedMorphTargets.includes(value)) {
+            lerpMorphTarget(value, 0, 0.1);
+          }
+        });
       }
     }
-
-    Object.values(corresponding).forEach((value) => {
-      if (appliedMorphTargets.includes(value)) {
-        return;
-      }
-      lerpMorphTarget(value, 0, 0.1);
-    });
   });
-
+  
+  // Controls for facial expressions and animations
   useControls("FacialExpressions", {
     chat: button(() => chat()),
     winkLeft: button(() => {
@@ -246,13 +278,8 @@ export function Avatar(props) {
     logMorphTargetValues: button(() => {
       const emotionValues = {};
       Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
-        if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") {
-          return; // eyes wink/blink are handled separately
-        }
-        const value =
-          nodes.EyeLeft.morphTargetInfluences[
-            nodes.EyeLeft.morphTargetDictionary[key]
-          ];
+        if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") return; // Skip these
+        const value = nodes.EyeLeft.morphTargetInfluences[nodes.EyeLeft.morphTargetDictionary[key]];
         if (value > 0.01) {
           emotionValues[key] = value;
         }
@@ -260,7 +287,8 @@ export function Avatar(props) {
       console.log(JSON.stringify(emotionValues, null, 2));
     }),
   });
-
+  
+  // Handle morph target values dynamically
   const [, set] = useControls("MorphTarget", () =>
     Object.assign(
       {},
@@ -269,9 +297,7 @@ export function Avatar(props) {
           [key]: {
             label: key,
             value: 0,
-            min: nodes.EyeLeft.morphTargetInfluences[
-              nodes.EyeLeft.morphTargetDictionary[key]
-            ],
+            min: nodes.EyeLeft.morphTargetInfluences[nodes.EyeLeft.morphTargetDictionary[key]],
             max: 1,
             onChange: (val) => {
               if (setupMode) {
@@ -283,22 +309,7 @@ export function Avatar(props) {
       })
     )
   );
-
-  useEffect(() => {
-    let blinkTimeout;
-    const nextBlink = () => {
-      blinkTimeout = setTimeout(() => {
-        setBlink(true);
-        setTimeout(() => {
-          setBlink(false);
-          nextBlink();
-        }, 200);
-      }, THREE.MathUtils.randInt(1000, 5000));
-    };
-    nextBlink();
-    return () => clearTimeout(blinkTimeout);
-  }, []);
-
+  
   return (
     <group {...props} dispose={null} ref={group}>
       <primitive object={nodes.Hips} />
@@ -368,5 +379,7 @@ export function Avatar(props) {
   );
 }
 
-useGLTF.preload("/models/66c89adb93f9fe518a52b9f8.glb");
+["doctor"].map((category) => {
+  useGLTF.preload(`/models/${category}.glb`);
+});
 useGLTF.preload("/models/animations.glb");

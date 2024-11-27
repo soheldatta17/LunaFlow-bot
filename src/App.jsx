@@ -5,14 +5,14 @@ import { Experience } from "./components/Experience";
 import { UI } from "./components/UI";
 
 
-function App({ text, setText }) {
+function App({ text, setText, count, setCount, categories, speak, setSpeak }) {
   return (
     <>
       <Loader />
       <Leva hidden />
-      <UI text={text} setText={setText} />
+      <UI text={text} setText={setText} count={count} setCount={setCount} categories={categories} speak={speak} setSpeak={setSpeak} />
       <Canvas shadows camera={{ position: [0, 0, 1], fov: 30 }}>
-        <Experience />
+        <Experience text={text} setText={setText} count={count} setCount={setCount} categories={categories} speak={speak} setSpeak={setSpeak} />
       </Canvas>
     </>
   );

@@ -17,7 +17,7 @@ body {
   background: url('https://png.pngtree.com/background/20240429/original/pngtree-contemporary-doctor-s-consultation-room-a-3d-rendering-of-a-professional-picture-image_8708610.jpg') center/cover no-repeat;
 }
 
-body.greenScreen {
-  background-color: #00ff00;
-  background-image: none;
+body.doctor {
+  margin: 0;
+  background: url('https://png.pngtree.com/background/20240429/original/pngtree-contemporary-doctor-s-consultation-room-a-3d-rendering-of-a-professional-picture-image_8708610.jpg') center/cover no-repeat;
 }
