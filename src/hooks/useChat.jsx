@@ -101,7 +101,7 @@ export const ChatProvider = ({ children, text, setText, count, setCount, categor
       // console.log(generatedText.length);
       console.log(generatedText);
     } catch (error) {
-      console.error("Error generating text:", error);
+      console.log(error)
     }
 
     return [
